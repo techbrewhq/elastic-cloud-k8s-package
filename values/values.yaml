@@ -1,0 +1,259 @@
+---
+eck-elasticsearch:
+  enabled: true
+  fullnameOverride: elasticsearch
+  http:
+    tls: 
+      selfSignedCertificate:
+        disabled: true
+  nodeSets:
+  - name: masters
+    count: 1
+    config:
+      node.roles: ["master", "remote_cluster_client"]
+      node.store.allow_mmap: false
+    podTemplate:
+      metadata:
+        annotations:
+          traffic.sidecar.istio.io/includeInboundPorts: "*"
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9300" 
+          traffic.sidecar.istio.io/excludeInboundPorts: "9300"
+      spec:
+        automountServiceAccountToken: true
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 4Gi
+              cpu: 1
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi  # Small amount for metadata, logs, etc.
+
+  - name: hot
+    count: 1
+    config:
+      node.roles: ["data_hot", "data_content", "ingest"]
+      node.store.allow_mmap: false
+    podTemplate:
+      metadata:
+        annotations:
+          traffic.sidecar.istio.io/includeInboundPorts: "*"
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9300" 
+          traffic.sidecar.istio.io/excludeInboundPorts: "9300"
+      spec:
+        automountServiceAccountToken: true
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 4Gi
+              cpu: 1
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi  # High-performance storage for indexing
+
+  - name: warm
+    count: 1  # Two warm nodes
+    config:
+      node.roles: ["data_warm"]
+      node.store.allow_mmap: false
+    podTemplate:        
+      metadata:
+        annotations:
+          traffic.sidecar.istio.io/includeInboundPorts: "*"
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9300" 
+          traffic.sidecar.istio.io/excludeInboundPorts: "9300"
+      spec:
+        automountServiceAccountToken: true
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 4Gi
+              cpu: 1
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi  # Moderate-performance storage for warm data
+          
+  - name: cold
+    count: 1  # Two cold nodes
+    config:
+      node.roles: ["data_cold"]
+      node.store.allow_mmap: false
+    podTemplate:
+      metadata:
+        annotations:
+          traffic.sidecar.istio.io/includeInboundPorts: "*"
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9300" 
+          traffic.sidecar.istio.io/excludeInboundPorts: "9300"
+      spec:
+        automountServiceAccountToken: true
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 4Gi
+              cpu: 1
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi  # Lower-performance storage for historical/archived data
+
+eck-kibana:
+  enabled: true
+      
+  config:
+    server.host: "kibana.admin.techbrewhq.com"
+    server.port: 5601
+    server.ssl.enabled: true
+  
+  fullnameOverride: kibana
+  
+  spec:
+    http:
+      tls: 
+        selfSignedCertificate:
+          disabled: true
+    podTemplate:
+      metadata:
+        annotations:
+          sidecar.istio.io/rewriteAppHTTPProbers: "true" 
+      spec:
+        automountServiceAccountToken: true
+        containers:
+          - name: kibana
+            resources:
+              limits:
+                memory: 4Gi
+                cpu: 1
+        
+
+    # Reference to ECK-managed Elasticsearch instance, ideally from {{ "elasticsearch.fullname" }}
+    #
+    elasticsearchRef:
+      name: elasticsearch
+    
+    config:
+
+      xpack.fleet.agents.elasticsearch.hosts: ["https://es.admin.techbrewhq.com"]
+      xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server.admin.techbrewhq.com"]
+      xpack.fleet.packages:
+      - name: system
+        version: latest
+      - name: elastic_agent
+        version: latest
+      - name: fleet_server
+        version: latest
+      - name: kubernetes
+        version: latest
+      xpack.fleet.agentPolicies:
+      - name: Fleet Server on ECK policy
+        id: eck-fleet-server
+        namespace: default
+        monitoring_enabled:
+        - logs
+        - metrics
+        package_policies:
+        - name: fleet_server-1
+          id: fleet_server-1
+          package:
+            name: fleet_server
+      - name: Elastic Agent on ECK policy
+        id: eck-agent
+        namespace: default
+        monitoring_enabled:
+        - logs
+        - metrics
+        unenroll_timeout: 900
+        package_policies:
+        - package:
+            name: system
+          name: system-1
+        - package:
+            name: kubernetes
+          name: kubernetes-1
+
+eck-agent:
+  enabled: true
+  
+  spec:
+    # Agent policy to be used.
+    policyID: eck-agent
+    # Reference to ECK-managed Kibana instance.
+    #
+    kibanaRef:
+      name: kibana
+
+    elasticsearchRefs: []
+    
+    # Reference to ECK-managed Fleet instance.
+    #
+    fleetServerRef:
+      name: fleet-server
+    
+    mode: fleet
+
+    daemonSet:
+      podTemplate:
+        metadata:
+        annotations:
+          traffic.sidecar.istio.io/includeInboundPorts: "*"  # Include inbound ports handled by Istio
+          traffic.sidecar.istio.io/excludeOutboundPorts: "8220"  # Exclude ports not handled by Istio
+          traffic.sidecar.istio.io/excludeInboundPorts: "8220"  
+        spec:
+          serviceAccountName: elastic-agent
+          # hostNetwork: true
+          # dnsPolicy: ClusterFirstWithHostNet
+          automountServiceAccountToken: true
+          securityContext:
+            runAsUser: 0
+  
+eck-fleet-server:
+  enabled: true
+  config:
+    server.host: "fleet-server.admin.techbrewhq.com"
+    server.port: 8220
+    server.ssl.enabled: true
+    xpack.fleet.agents.elasticsearch.hosts: ["https://es.admin.techbrewhq.com"]
+  fullnameOverride: "fleet-server"
+  spec:
+    podTemplate:
+      metadata:
+        annotations:
+          traffic.sidecar.istio.io/includeInboundPorts: "*"  # Include inbound ports handled by Istio
+          traffic.sidecar.istio.io/excludeOutboundPorts: "8220"  # Exclude ports not handled by Istio
+          traffic.sidecar.istio.io/excludeInboundPorts: "8220"  
+    http:
+      tls:
+        selfSignedCertificate:
+          disabled: true
+    # Agent policy to be used.
+    policyID: eck-fleet-server
+    kibanaRef:
+      name: kibana
+    elasticsearchRefs:
+    - name: elasticsearch

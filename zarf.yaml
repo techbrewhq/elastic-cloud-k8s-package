@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/zarf/main/zarf.schema.json
+kind: ZarfPackageConfig
+metadata:
+  name: elastic-cloud-k8s-stack
+  description: "UDS Elastic Cloud Kubernetes package"
+  # x-release-please-start-version
+  version: "0.0.2-uds.0"
+  # x-release-please-end
+  url: https://github.com/elastic/cloud-on-k8s
+
+components:
+  - name: eck-stack
+    required: true
+    import:
+      path: common
+    only:
+      flavor: upstream
+    charts:
+      - name: eck-stack
+        namespace: elastic-stack
+        valuesFiles:
+          - ./values/upstream-values.yaml
+    images:
+      - elastic/eck-operator:2.12.1
+      - docker.elastic.co/kibana/kibana:8.13.4
+      - docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+      - docker.elastic.co/beats/elastic-agent:8.13.4
+
+  - name: eck-stack
+    required: true
+    import:
+      path: common
+    only:
+      flavor: registry1
+    charts:
+      - name: eck-stack
+        namespace: elastic-stack
+        valuesFiles:
+          - ./values/registry1-values.yaml
+    images:
+      - registry1.dso.mil/ironbank/elastic/eck-operator/eck-operator:2.12.1
+      - registry1.dso.mil/ironbank/elastic/kibana/kibana:8.13.4
+      - registry1.dso.mil/ironbank/elastic/elasticsearch/elasticsearch:8.13.4
+      - registry1.dso.mil/ironbank/elastic/beats/elastic-agent:8.13.4

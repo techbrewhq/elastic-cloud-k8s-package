@@ -1,0 +1,35 @@
+apiVersion: uds.dev/v1alpha1
+kind: Package
+metadata:
+  name: eck-stack
+  namespace: elastic-stack
+spec:
+  network:
+    expose:
+      - service: kibana-kb-http
+        selector:
+          app: kibana-kb
+        gateway: admin
+        host: kibana
+        port: 5601
+      - service: fleet-server-agent-http
+        selector: 
+          app: fleet-server-agent
+        gateway: admin
+        host: fleet-server
+        port: 8220
+      - service: elasticsearch-es-http
+        gateway: admin
+        host: es
+        port: 9200
+        selector:
+          app: elasticsearch
+    allow:
+      # Permit intra-namespace communication
+      - direction: Ingress
+        remoteGenerated: Anywhere
+
+      - direction: Egress
+        remoteGenerated: Anywhere
+
+      

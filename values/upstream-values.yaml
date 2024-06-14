@@ -1,0 +1,14 @@
+eck-elasticsearch:
+  version: 8.13.4
+ 
+eck-kibana:
+  version: 8.13.4
+
+eck-logstash:
+  version: 8.13.4
+
+eck-agent:
+  version: 8.13.4
+
+eck-fleet-server:
+  version: 8.13.4

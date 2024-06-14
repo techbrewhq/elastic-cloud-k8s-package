@@ -1,0 +1,20 @@
+apiVersion: uds.dev/v1alpha1
+kind: Exemption
+metadata:
+  name: fleet-server-agent-exemptions
+  namespace: uds-policy-exemptions
+spec:
+  exemptions:
+    - policies:
+        - DisallowHostNamespaces
+        - DisallowPrivileged
+        - RequireNonRootUser
+        - DropAllCapabilities
+        - RestrictHostPathWrite
+        - RestrictVolumeTypes
+        - RestrictCapabilities
+        - RestrictHostPorts
+      matcher:
+        namespace: elastic-stack
+        name: ".*"
+      title: "fleet-server-agent-pod"

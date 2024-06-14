@@ -1,0 +1,20 @@
+kind: ZarfPackageConfig
+metadata:
+  name: eck
+  description: "UDS ECK"
+  url: https://github.com/elastic/cloud-on-k8s
+
+components:
+  - name: eck-stack
+    required: true
+    charts:
+      - name: eck-stack
+        version: 0.10.0
+        namespace: eck-stack
+        url: https://helm.elastic.co
+        valuesFiles:
+          - ../values/values.yaml
+      - name: uds-eck-config
+        version: 0.1.0
+        namespace: elastic-system
+        localPath: ../chart

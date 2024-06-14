@@ -1,0 +1,15 @@
+tasks:
+  - name: package
+    description: Build and publish the packages
+    actions:
+      - description: Create the AMD64 package
+        task: create:package
+        with:
+          architecture: amd64
+
+      - description: Publish the packages
+        task: publish:package
+        with:
+          # x-release-please-start-version
+          version: "0.1.0-uds.0"
+          # x-release-please-end

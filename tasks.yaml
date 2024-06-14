@@ -1,0 +1,12 @@
+tasks:
+  - name: create-eck-operator-package
+    description: Create UDS Postgres Operator Package, No dependencies included
+    actions:
+      - task: create:package
+        with:
+          options: "--skip-sbom"
+  - name: publish-eck-operator-package
+    description: Publish UDS Postgres Operator Package
+    actions:
+      - task: publish:package
+        
