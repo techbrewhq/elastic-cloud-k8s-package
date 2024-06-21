@@ -4,7 +4,7 @@ metadata:
   name: elastic-cloud-k8s-stack
   description: "UDS Elastic Cloud Kubernetes package"
   # x-release-please-start-version
-  version: "0.0.2-uds.0"
+  version: "2.13.0-uds.0"
   # x-release-please-end
   url: https://github.com/elastic/cloud-on-k8s
 
